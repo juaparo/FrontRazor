@@ -1,0 +1,239 @@
+@page "/semillero"
+@rendermode InteractiveServer
+@inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+
+<PageTitle>Semillero</PageTitle>
+
+<div class="container mt-4">
+    <h3>Semillero</h3>
+
+    @* ───────── ALERTA ───────── *@
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert @(exito ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="() => mensaje = string.Empty"></button>
+        </div>
+    }
+
+    @* ───────── BOTON NUEVO ───────── *@
+    @if (!mostrarFormulario)
+    {
+        <button class="btn btn-primary mb-3" @onclick="NuevoRegistro">Nuevo Semillero</button>
+    }
+
+    @* ───────── LIMITE DE REGISTROS ───────── *@
+    <div class="d-flex align-items-center mb-3">
+        <label class="form-label me-2 mb-0">Limite:</label>
+        <input class="form-control me-2" type="number" style="width:100px" @bind="limite" />
+        <button class="btn btn-outline-secondary" @onclick="CargarRegistros">Cargar</button>
+    </div>
+
+    @* ───────── FORMULARIO ───────── *@
+    @if (mostrarFormulario)
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                @(editando ? "Editar Semillero" : "Nuevo Semillero")
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @if(editando)
+                    {
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Id</label>
+                            <input class="form-control" type="text" value="@campoId" disabled />
+                        </div>
+                    }
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="campoNombre" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de Fundación <span class="text-danger">*</span></label>
+                        <input class="form-control" type="date" @bind="campoFechaFundacion" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Grupo de Investigación <span class="text-danger">*</span></label>
+                        <select class="form-control" @bind="campoGrupoInvestigacion">
+                            <option value="">-- Seleccione un grupo --</option>
+                            @foreach (var grupo in gruposInvestigacion)
+                            {
+                                <option value="@grupo["id"]">@grupo["nombre"]</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-success me-2" @onclick="GuardarRegistro">Guardar</button>
+                <button class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+            </div>
+        </div>
+    }
+
+    @* ───────── SPINNER ───────── *@
+    @if (cargando)
+    {
+        <div class="d-flex justify-content-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    }
+
+    @* ───────── TABLA ───────── *@
+    @if (!cargando && registros.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Id</th>
+                        <th>Nombre</th>
+                        <th>Fecha Fund.</th>
+                        <th>Grupo de Investigación</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var reg in registros)
+                    {
+                        var grupo = gruposInvestigacion.FirstOrDefault(g => g["id"]?.ToString() == reg["grupo_investigacion"]?.ToString());
+                        string nombreGrupo = grupo != null && grupo.ContainsKey("nombre") ? grupo["nombre"]?.ToString() ?? reg["grupo_investigacion"]?.ToString() ?? "" : reg["grupo_investigacion"]?.ToString() ?? "";
+
+                        <tr>
+                            <td>@reg["id"]</td>
+                            <td>@reg["nombre"]</td>
+                            <td>@(reg.ContainsKey("fecha_fundacion") && reg["fecha_fundacion"] != null ? Convert.ToDateTime(reg["fecha_fundacion"]).ToString("yyyy-MM-dd") : "")</td>
+                            <td>@nombreGrupo</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm me-1"
+                                        @onclick="() => EditarRegistro(reg)">Editar</button>
+                                <button class="btn btn-danger btn-sm"
+                                        @onclick="() => EliminarRegistro(reg)">Eliminar</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (!cargando && !registros.Any())
+    {
+        <div class="alert alert-warning">No se encontraron registros en la tabla Semillero.</div>
+    }
+</div>
+
+@code {
+    private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> gruposInvestigacion = new();
+    private bool cargando = true;
+    private bool mostrarFormulario = false;
+    private bool editando = false;
+    private string mensaje = string.Empty;
+    private bool exito = false;
+
+    // Campos del formulario
+    private string campoId = string.Empty;
+    private string campoNombre = string.Empty;
+    private DateTime? campoFechaFundacion;
+    private string campoGrupoInvestigacion = string.Empty;
+    private int? limite = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarGruposInvestigacion();
+        await CargarRegistros();
+    }
+
+    private async Task CargarGruposInvestigacion()
+    {
+        // Traeremos todos los grupos para llenar el select
+        gruposInvestigacion = await Api.ListarAsync("grupo_investigacion", null);
+    }
+
+    private async Task CargarRegistros()
+    {
+        cargando = true;
+        registros = await Api.ListarAsync("semillero", limite);
+        cargando = false;
+    }
+
+    private void NuevoRegistro()
+    {
+        editando = false;
+        campoId = string.Empty;
+        campoNombre = string.Empty;
+        campoFechaFundacion = DateTime.Today;
+        campoGrupoInvestigacion = string.Empty;
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+    }
+
+    private void EditarRegistro(Dictionary<string, object?> reg)
+    {
+        editando = true;
+        campoId = reg["id"]?.ToString() ?? "";
+        campoNombre = reg["nombre"]?.ToString() ?? "";
+        
+        if (reg.ContainsKey("fecha_fundacion") && reg["fecha_fundacion"] != null && DateTime.TryParse(reg["fecha_fundacion"]?.ToString(), out DateTime fecha))
+        {
+            campoFechaFundacion = fecha;
+        }
+        else
+        {
+            campoFechaFundacion = null;
+        }
+
+        campoGrupoInvestigacion = reg["grupo_investigacion"]?.ToString() ?? "";
+        
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+    }
+
+    private async Task GuardarRegistro()
+    {
+        var datos = new Dictionary<string, object?>
+        {
+            ["nombre"] = campoNombre,
+            ["fecha_fundacion"] = campoFechaFundacion?.ToString("yyyy-MM-dd"),
+            ["grupo_investigacion"] = string.IsNullOrWhiteSpace(campoGrupoInvestigacion) ? null : int.Parse(campoGrupoInvestigacion)
+        };
+
+        if (editando)
+        {
+            var resultado = await Api.ActualizarAsync("semillero", "id", campoId, datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+        else
+        {
+            var resultado = await Api.CrearAsync("semillero", datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+
+        if (exito)
+        {
+            mostrarFormulario = false;
+            await CargarRegistros();
+        }
+    }
+
+    private async Task EliminarRegistro(Dictionary<string, object?> reg)
+    {
+        string id = reg["id"]?.ToString() ?? "";
+        var resultado = await Api.EliminarAsync("semillero", "id", id);
+        exito = resultado.exito;
+        mensaje = resultado.mensaje;
+
+        if (exito)
+            await CargarRegistros();
+    }
+
+    private void Cancelar()
+    {
+        mostrarFormulario = false;
+        mensaje = string.Empty;
+    }
+}

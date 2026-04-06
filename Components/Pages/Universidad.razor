@@ -1,11 +1,12 @@
-@page "/lineaInvestigacion"
+@page "/universidad"
 @rendermode InteractiveServer
 @inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+@inject FrontBlazor_AppiGenericaCsharp.Services.SpService Sp
 
-<PageTitle>Linea De Investigacion</PageTitle>
+<PageTitle>Universidad</PageTitle>
 
 <div class="container mt-4">
-    <h3>Linea De Investigacion</h3>
+    <h3>Universidad</h3>
 
     @* ───────── ALERTA ───────── *@
     @if (!string.IsNullOrEmpty(mensaje))
@@ -19,7 +20,7 @@
     @* ───────── BOTON NUEVO ───────── *@
     @if (!mostrarFormulario)
     {
-        <button class="btn btn-primary mb-3" @onclick="NuevoRegistro">Nueva Linea De Investigacion</button>
+        <button class="btn btn-primary mb-3" @onclick="NuevoRegistro">Nueva Universidad</button>
     }
 
     @* ───────── LIMITE DE REGISTROS ───────── *@
@@ -34,21 +35,28 @@
     {
         <div class="card mb-3">
             <div class="card-header">
-                @(editando ? "Editar Linea De Investigacion" : "Nueva Linea De Investigacion")
+                @(editando ? "Editar Universidad" : "Nueva Universidad")
             </div>
             <div class="card-body">
-                <div class="col">
-                    <!-- <div class="col-md-6 mb-3">
-                        <label class="form-label">Id</label>
-                        <input class="form-control" @bind="campoId" disabled="@editando" />
-                    </div> -->
+                <div class="row">
+                    @if (editando)
+                    {
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Id</label>
+                            <input class="form-control" type="text" value="@campoId" disabled />
+                        </div>
+                    }
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Nombre <span class="text-danger">*</span></label>
                         <input class="form-control" @bind="campoNombre" />
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Descripcion <span class="text-danger">*</span></label>
-                        <textarea class="form-control" @bind="campoDescripcion"></textarea>
+                        <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="campoTipo" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Ciudad <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="campoCiudad" />
                     </div>
                 </div>
                 <button class="btn btn-success me-2" @onclick="GuardarRegistro">Guardar</button>
@@ -70,37 +78,41 @@
     @* ───────── TABLA ───────── *@
     @if (!cargando && registros.Any())
     {
-        <table class="table table-striped table-hover">
-            <thead class="table-dark">
-                <tr>
-                    <th>Id</th>
-                    <th>Nombre</th>
-                    <th>Descripcion</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var reg in registros)
-                {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
                     <tr>
-                        <td>@reg["id"]</td>
-                        <td>@reg["nombre"]</td>
-                        <td>@reg["descripcion"]</td>
-                        <td>
-                            <button class="btn btn-warning btn-sm me-1"
-                                    @onclick="() => EditarRegistro(reg)">Editar</button>
-                            <button class="btn btn-danger btn-sm"
-                                    @onclick="() => EliminarRegistro(reg)">Eliminar</button>
-                        </td>
+                        <th>Id</th>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Ciudad</th>
+                        <th>Acciones</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var reg in registros)
+                    {
+                        <tr>
+                            <td>@reg["id"]</td>
+                            <td>@reg["nombre"]</td>
+                            <td>@reg["tipo"]</td>
+                            <td>@reg["ciudad"]</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm me-1"
+                                        @onclick="() => EditarRegistro(reg)">Editar</button>
+                                <button class="btn btn-danger btn-sm"
+                                        @onclick="() => EliminarRegistro(reg)">Eliminar</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     }
 
     @if (!cargando && !registros.Any())
     {
-        <div class="alert alert-warning">No se encontraron registros en la tabla Linea Investigacion.</div>
+        <div class="alert alert-warning">No se encontraron registros en la tabla Universidad.</div>
     }
 </div>
 
@@ -115,7 +127,8 @@
     // Campos del formulario
     private string campoId = string.Empty;
     private string campoNombre = string.Empty;
-    private string campoDescripcion = string.Empty;
+    private string campoTipo = string.Empty;
+    private string campoCiudad = string.Empty;
     private int? limite = null;
 
     protected override async Task OnInitializedAsync()
@@ -126,7 +139,7 @@
     private async Task CargarRegistros()
     {
         cargando = true;
-        registros = await Api.ListarAsync("linea_investigacion", limite);
+        registros = await Api.ListarAsync("universidad", limite);
         cargando = false;
     }
 
@@ -135,7 +148,8 @@
         editando = false;
         campoId = string.Empty;
         campoNombre = string.Empty;
-        campoDescripcion = string.Empty;
+        campoTipo = string.Empty;
+        campoCiudad = string.Empty;
         mostrarFormulario = true;
         mensaje = string.Empty;
     }
@@ -145,7 +159,9 @@
         editando = true;
         campoId = reg["id"]?.ToString() ?? "";
         campoNombre = reg["nombre"]?.ToString() ?? "";
-        campoDescripcion = reg["descripcion"]?.ToString() ?? "";
+        campoTipo = reg["tipo"]?.ToString() ?? "";
+        campoCiudad = reg["ciudad"]?.ToString() ?? "";
+        
         mostrarFormulario = true;
         mensaje = string.Empty;
     }
@@ -154,21 +170,20 @@
     {
         var datos = new Dictionary<string, object?>
         {
-            //["id"] = campoId,//
             ["nombre"] = campoNombre,
-            ["descripcion"] = campoDescripcion
+            ["tipo"] = campoTipo,
+            ["ciudad"] = campoCiudad
         };
 
         if (editando)
         {
-            datos.Remove("id");
-            var resultado = await Api.ActualizarAsync("linea_investigacion", "id", campoId, datos);
+            var resultado = await Api.ActualizarAsync("universidad", "id", campoId, datos);
             exito = resultado.exito;
             mensaje = resultado.mensaje;
         }
         else
         {
-            var resultado = await Api.CrearAsync("linea_investigacion", datos);
+            var resultado = await Sp.EjecutarSpAsync("sp_guardar_universidad", datos);
             exito = resultado.exito;
             mensaje = resultado.mensaje;
         }
@@ -183,7 +198,7 @@
     private async Task EliminarRegistro(Dictionary<string, object?> reg)
     {
         string id = reg["id"]?.ToString() ?? "";
-        var resultado = await Api.EliminarAsync("linea_investigacion", "id", id);
+        var resultado = await Api.EliminarAsync("universidad", "id", id);
         exito = resultado.exito;
         mensaje = resultado.mensaje;
 

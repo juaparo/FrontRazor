@@ -1,0 +1,286 @@
+@page "/grupoInvestigacion"
+@rendermode InteractiveServer
+@inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+
+<PageTitle>Grupo de Investigación</PageTitle>
+
+<div class="container mt-4">
+    <h3>Grupo de Investigación</h3>
+
+    @* ───────── ALERTA ───────── *@
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert @(exito ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="() => mensaje = string.Empty"></button>
+        </div>
+    }
+
+    @* ───────── BOTON NUEVO ───────── *@
+    @if (!mostrarFormulario)
+    {
+        <button class="btn btn-primary mb-3" @onclick="NuevoRegistro">Nuevo Grupo de Investigación</button>
+    }
+
+    @* ───────── LIMITE DE REGISTROS ───────── *@
+    <div class="d-flex align-items-center mb-3">
+        <label class="form-label me-2 mb-0">Limite:</label>
+        <input class="form-control me-2" type="number" style="width:100px" @bind="limite" />
+        <button class="btn btn-outline-secondary" @onclick="CargarRegistros">Cargar</button>
+    </div>
+
+    @* ───────── FORMULARIO ───────── *@
+    @if (mostrarFormulario)
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                @(editando ? "Editar Grupo de Investigación" : "Nuevo Grupo de Investigación")
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @if(editando)
+                    {
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Id</label>
+                            <input class="form-control" type="text" value="@campoId" disabled />
+                        </div>
+                    }
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="campoNombre" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">URL GrupLAC</label>
+                        <input class="form-control" @bind="campoUrlGruplac" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Categoría</label>
+                        <input class="form-control" @bind="campoCategoria" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Convocatoria</label>
+                        <input class="form-control" @bind="campoConvocatoria" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de Fundación <span class="text-danger">*</span></label>
+                        <input class="form-control" type="date" @bind="campoFechaFundacion" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Universidad</label>
+                        <select class="form-control" @bind="campoUniversidad">
+                            <option value="">-- Seleccione una universidad --</option>
+                            @foreach (var uni in universidades)
+                            {
+                                <option value="@uni["id"]">@uni["nombre"]</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Ámbito <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="campoAmbito" />
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" @bind="campoInterno" id="checkInterno" />
+                            <label class="form-check-label" for="checkInterno">
+                                Interno <span class="text-danger">*</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-success me-2" @onclick="GuardarRegistro">Guardar</button>
+                <button class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+            </div>
+        </div>
+    }
+
+    @* ───────── SPINNER ───────── *@
+    @if (cargando)
+    {
+        <div class="d-flex justify-content-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    }
+
+    @* ───────── TABLA ───────── *@
+    @if (!cargando && registros.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Id</th>
+                        <th>Nombre</th>
+                        <th>Fecha Fund.</th>
+                        <th>Universidad</th>
+                        <th>Ámbito</th>
+                        <th>Interno</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var reg in registros)
+                    {
+                        var uni = universidades.FirstOrDefault(u => u["id"]?.ToString() == reg["universidad"]?.ToString());
+                        string nombreUni = uni != null && uni.ContainsKey("nombre") ? uni["nombre"]?.ToString() ?? reg["universidad"]?.ToString() ?? "" : reg["universidad"]?.ToString() ?? "";
+
+                        <tr>
+                            <td>@reg["id"]</td>
+                            <td>@reg["nombre"]</td>
+                            <td>@(reg.ContainsKey("fecha_fundacion") && reg["fecha_fundacion"] != null ? Convert.ToDateTime(reg["fecha_fundacion"]).ToString("yyyy-MM-dd") : "")</td>
+                            <td>@nombreUni</td>
+                            <td>@reg["ambito"]</td>
+                            <td>@(reg.ContainsKey("interno") && reg["interno"] != null && Convert.ToBoolean(reg["interno"]) ? "Sí" : "No")</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm me-1"
+                                        @onclick="() => EditarRegistro(reg)">Editar</button>
+                                <button class="btn btn-danger btn-sm"
+                                        @onclick="() => EliminarRegistro(reg)">Eliminar</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (!cargando && !registros.Any())
+    {
+        <div class="alert alert-warning">No se encontraron registros en la tabla Grupo de Investigación.</div>
+    }
+</div>
+
+@code {
+    private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> universidades = new();
+    private bool cargando = true;
+    private bool mostrarFormulario = false;
+    private bool editando = false;
+    private string mensaje = string.Empty;
+    private bool exito = false;
+
+    // Campos del formulario
+    private string campoId = string.Empty;
+    private string campoNombre = string.Empty;
+    private string campoUrlGruplac = string.Empty;
+    private string campoCategoria = string.Empty;
+    private string campoConvocatoria = string.Empty;
+    private DateTime? campoFechaFundacion;
+    private string campoUniversidad = string.Empty;
+    private bool campoInterno = false;
+    private string campoAmbito = string.Empty;
+    private int? limite = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarUniversidades();
+        await CargarRegistros();
+    }
+
+    private async Task CargarUniversidades()
+    {
+        universidades = await Api.ListarAsync("universidad", null);
+    }
+
+    private async Task CargarRegistros()
+    {
+        cargando = true;
+        registros = await Api.ListarAsync("grupo_investigacion", limite);
+        cargando = false;
+    }
+
+    private void NuevoRegistro()
+    {
+        editando = false;
+        campoId = string.Empty;
+        campoNombre = string.Empty;
+        campoUrlGruplac = string.Empty;
+        campoCategoria = string.Empty;
+        campoConvocatoria = string.Empty;
+        campoFechaFundacion = DateTime.Today;
+        campoUniversidad = string.Empty;
+        campoInterno = false;
+        campoAmbito = string.Empty;
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+    }
+
+    private void EditarRegistro(Dictionary<string, object?> reg)
+    {
+        editando = true;
+        campoId = reg["id"]?.ToString() ?? "";
+        campoNombre = reg["nombre"]?.ToString() ?? "";
+        campoUrlGruplac = reg["url_gruplac"]?.ToString() ?? "";
+        campoCategoria = reg["categoria"]?.ToString() ?? "";
+        campoConvocatoria = reg["convocatoria"]?.ToString() ?? "";
+        
+        if (reg.ContainsKey("fecha_fundacion") && reg["fecha_fundacion"] != null && DateTime.TryParse(reg["fecha_fundacion"]?.ToString(), out DateTime fecha))
+        {
+            campoFechaFundacion = fecha;
+        }
+        else
+        {
+            campoFechaFundacion = null;
+        }
+
+        campoUniversidad = reg["universidad"]?.ToString() ?? "";
+        campoInterno = reg.ContainsKey("interno") && reg["interno"] != null && Convert.ToBoolean(reg["interno"]);
+        campoAmbito = reg["ambito"]?.ToString() ?? "";
+        
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+    }
+
+    private async Task GuardarRegistro()
+    {
+        var datos = new Dictionary<string, object?>
+        {
+            ["nombre"] = campoNombre,
+            ["url_gruplac"] = string.IsNullOrWhiteSpace(campoUrlGruplac) ? null : campoUrlGruplac,
+            ["categoria"] = string.IsNullOrWhiteSpace(campoCategoria) ? null : campoCategoria,
+            ["convocatoria"] = string.IsNullOrWhiteSpace(campoConvocatoria) ? null : campoConvocatoria,
+            ["fecha_fundacion"] = campoFechaFundacion?.ToString("yyyy-MM-dd"),
+            ["universidad"] = string.IsNullOrWhiteSpace(campoUniversidad) ? null : int.Parse(campoUniversidad),
+            ["interno"] = campoInterno,
+            ["ambito"] = campoAmbito
+        };
+
+        if (editando)
+        {
+            var resultado = await Api.ActualizarAsync("grupo_investigacion", "id", campoId, datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+        else
+        {
+            var resultado = await Api.CrearAsync("grupo_investigacion", datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+
+        if (exito)
+        {
+            mostrarFormulario = false;
+            await CargarRegistros();
+        }
+    }
+
+    private async Task EliminarRegistro(Dictionary<string, object?> reg)
+    {
+        string id = reg["id"]?.ToString() ?? "";
+        var resultado = await Api.EliminarAsync("grupo_investigacion", "id", id);
+        exito = resultado.exito;
+        mensaje = resultado.mensaje;
+
+        if (exito)
+            await CargarRegistros();
+    }
+
+    private void Cancelar()
+    {
+        mostrarFormulario = false;
+        mensaje = string.Empty;
+    }
+}
