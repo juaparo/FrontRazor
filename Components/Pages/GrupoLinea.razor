@@ -84,7 +84,7 @@
                     <tr>
                         <th>Grupo de Investigación</th>
                         <th>Línea de Investigación</th>
-                        <th class="text-center">Acciones</th>
+                        <th class="text-center" style="width: 150px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -94,12 +94,11 @@
                         var idLinea = reg["linea_investigacion"]?.ToString();
                         
                         <tr>
-                            <td>@ObtenerNombreGrupo(idGrupo)</td>
-                            <td>@ObtenerNombreLinea(idLinea)</td>
+                            <td class="align-middle">@ObtenerNombreGrupo(idGrupo)</td>
+                            <td class="align-middle">@ObtenerNombreLinea(idLinea)</td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-outline-danger" title="Desvincular"
-                                        @onclick='() => ConfirmarEliminacion(idGrupo, idLinea)'>
-                                    <i class="bi bi-x-circle"></i> Desvincular
+                                <button class="btn btn-danger btn-sm" @onclick='() => ConfirmarEliminacion(idGrupo, idLinea)'>
+                                    Eliminar
                                 </button>
                             </td>
                         </tr>

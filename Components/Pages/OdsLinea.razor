@@ -84,7 +84,7 @@
                     <tr>
                         <th>Línea de Investigación</th>
                         <th>Objetivo de Desarrollo Sostenible (ODS)</th>
-                        <th class="text-center">Acciones</th>
+                        <th class="text-center" style="width: 150px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -94,12 +94,11 @@
                         var idOds = reg["ods"]?.ToString();
                         
                         <tr>
-                            <td>@ObtenerNombreLinea(idLinea)</td>
-                            <td>@ObtenerNombreOds(idOds)</td>
+                            <td class="align-middle">@ObtenerNombreLinea(idLinea)</td>
+                            <td class="align-middle">@ObtenerNombreOds(idOds)</td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-outline-danger" title="Desvincular"
-                                        @onclick='() => ConfirmarEliminacion(idLinea, idOds)'>
-                                    <i class="bi bi-x-circle"></i> Desvincular
+                                <button class="btn btn-danger btn-sm" @onclick='() => ConfirmarEliminacion(idLinea, idOds)'>
+                                    Eliminar
                                 </button>
                             </td>
                         </tr>

@@ -110,7 +110,7 @@
                         <th>Rol</th>
                         <th>Fecha Inicio</th>
                         <th>Fecha Fin</th>
-                        <th class="text-center">Acciones</th>
+                        <th class="text-center" style="width: 220px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -120,19 +120,17 @@
                         var idSemillero = reg["semillero"]?.ToString();
                         
                         <tr>
-                            <td>@ObtenerNombreDocente(cedulaDocente)</td>
-                            <td>@ObtenerNombreSemillero(idSemillero)</td>
-                            <td>@reg["rol"]</td>
-                            <td>@(reg["fecha_inicio"] != null ? Convert.ToDateTime(reg["fecha_inicio"]).ToString("dd/MM/yyyy") : "")</td>
-                            <td>@(reg["fecha_fin"] != null ? Convert.ToDateTime(reg["fecha_fin"]).ToString("dd/MM/yyyy") : "N/A")</td>
+                            <td class="align-middle">@ObtenerNombreDocente(cedulaDocente)</td>
+                            <td class="align-middle">@ObtenerNombreSemillero(idSemillero)</td>
+                            <td class="align-middle">@reg["rol"]</td>
+                            <td class="align-middle">@(reg["fecha_inicio"] != null ? Convert.ToDateTime(reg["fecha_inicio"]).ToString("dd/MM/yyyy") : "")</td>
+                            <td class="align-middle">@(reg["fecha_fin"] != null ? Convert.ToDateTime(reg["fecha_fin"]).ToString("dd/MM/yyyy") : "Actualidad")</td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-outline-primary me-1" title="Editar"
-                                        @onclick='() => PrepararEdicion(reg)'>
-                                    <i class="bi bi-pencil"></i>
+                                <button class="btn btn-warning btn-sm me-1" @onclick='() => PrepararEdicion(reg)'>
+                                    Editar
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger" title="Eliminar"
-                                        @onclick='() => ConfirmarEliminacion(cedulaDocente, idSemillero)'>
-                                    <i class="bi bi-trash"></i>
+                                <button class="btn btn-danger btn-sm" @onclick='() => ConfirmarEliminacion(cedulaDocente, idSemillero)'>
+                                    Eliminar
                                 </button>
                             </td>
                         </tr>

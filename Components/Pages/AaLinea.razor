@@ -84,7 +84,7 @@
                     <tr>
                         <th>Línea de Investigación</th>
                         <th>Área de Aplicación</th>
-                        <th class="text-center">Acciones</th>
+                        <th class="text-center" style="width: 150px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -94,12 +94,11 @@
                         var idArea = reg["area_aplicacion"]?.ToString();
                         
                         <tr>
-                            <td>@ObtenerNombreLinea(idLinea)</td>
-                            <td>@ObtenerNombreArea(idArea)</td>
+                            <td class="align-middle">@ObtenerNombreLinea(idLinea)</td>
+                            <td class="align-middle">@ObtenerNombreArea(idArea)</td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-outline-danger" title="Desvincular"
-                                        @onclick='() => ConfirmarEliminacion(idLinea, idArea)'>
-                                    <i class="bi bi-x-circle"></i> Desvincular
+                                <button class="btn btn-danger btn-sm" @onclick='() => ConfirmarEliminacion(idLinea, idArea)'>
+                                    Eliminar
                                 </button>
                             </td>
                         </tr>
