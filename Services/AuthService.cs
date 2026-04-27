@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AuthService.cs - Servicio de autenticacion y autorizacion para Blazor Server.
  *
  * QUE SE NECESITA PARA LOGIN Y CONTROL DE ACCESO:
@@ -253,7 +253,15 @@ public class AuthService
                 using var doc = JsonDocument.Parse(body);
                 // La API devuelve: {"token": "eyJhbG...", "usuario": "email", ...}
                 if (doc.RootElement.TryGetProperty("token", out var tokenEl))
+                {
                     Token = tokenEl.GetString();
+                    // IMPORTANTE: Configurar el token en el cliente HTTP interno para las siguientes llamadas (roles, rutas, etc.)
+                    if (!string.IsNullOrEmpty(Token))
+                    {
+                        _http.DefaultRequestHeaders.Authorization = 
+                            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
+                    }
+                }
                 return (true, "OK");
             }
 
@@ -828,7 +836,13 @@ WHERE u.{pkUsuario} = @email";
                 if (nombreResult.Success) NombreUsuario = nombreResult.Value;
                 // Restaurar token JWT para que ApiService lo envie en cada request
                 var tokenResult = await _session.GetAsync<string>("token");
-                if (tokenResult.Success) Token = tokenResult.Value;
+                if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
+                {
+                    Token = tokenResult.Value;
+                    // Restaurar el token en el cliente HTTP interno para futuras peticiones a la API desde este servicio
+                    _http.DefaultRequestHeaders.Authorization = 
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
+                }
                 var rolesResult = await _session.GetAsync<string>("roles");
                 if (rolesResult.Success && !string.IsNullOrEmpty(rolesResult.Value))
                     Roles = rolesResult.Value.Split(',').ToList();
