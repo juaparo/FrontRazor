@@ -1,0 +1,364 @@
+@page "/participa-semillero"
+@rendermode InteractiveServer
+@inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+@inject FrontBlazor_AppiGenericaCsharp.Services.SpService Sp
+
+<PageTitle>Participación en Semilleros</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gestión de Participación en Semilleros</h2>
+        <button class="btn btn-primary" @onclick="MostrarFormularioCrear">
+            <i class="bi bi-plus-circle me-1"></i> Nueva Participación
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert alert-@(exito ? "success" : "danger") alert-dismissible fade show" role="alert">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="CerrarMensaje"></button>
+        </div>
+    }
+
+    @if (mostrarFormulario)
+    {
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">@(editando ? "Editar Participación" : "Nueva Participación")</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Docente (Llave Primaria Compuesta 1) -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Docente <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="campoDocente" disabled="@editando">
+                            <option value="">-- Seleccione un Docente --</option>
+                            @foreach (var d in docentes)
+                            {
+                                <option value="@d["cedula"]?.ToString()">
+                                    @d["nombres"] @d["apellidos"] (C.C. @d["cedula"])
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Semillero (Llave Primaria Compuesta 2) -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Semillero <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="campoSemillero" disabled="@editando">
+                            <option value="">-- Seleccione un Semillero --</option>
+                            @foreach (var s in semilleros)
+                            {
+                                <option value="@s["id"]?.ToString()">@s["nombre"]</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Rol -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Rol <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="campoRol" maxlength="15" placeholder="Ej. Director, Investigador..." />
+                    </div>
+
+                    <!-- Fecha Inicio -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Fecha de Inicio <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" @bind="campoFechaInicio" />
+                    </div>
+
+                    <!-- Fecha Fin -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Fecha de Fin (Opcional)</label>
+                        <input type="date" class="form-control" @bind="campoFechaFin" />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button class="btn btn-secondary" @onclick="OcultarFormulario">Cancelar</button>
+                    <button class="btn btn-success" @onclick="GuardarRegistro">
+                        <i class="bi bi-save me-1"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (cargando)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando registros...</p>
+        </div>
+    }
+    else if (registros.Count == 0)
+    {
+        <div class="alert alert-info">
+            No hay registros de participación en semilleros disponibles.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Docente</th>
+                        <th>Semillero</th>
+                        <th>Rol</th>
+                        <th>Fecha Inicio</th>
+                        <th>Fecha Fin</th>
+                        <th class="text-center" style="width: 220px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var reg in registros)
+                    {
+                        var cedulaDocente = reg["docente"]?.ToString();
+                        var idSemillero = reg["semillero"]?.ToString();
+                        
+                        <tr>
+                            <td class="align-middle">@ObtenerNombreDocente(cedulaDocente)</td>
+                            <td class="align-middle">@ObtenerNombreSemillero(idSemillero)</td>
+                            <td class="align-middle">@reg["rol"]</td>
+                            <td class="align-middle">@(reg["fecha_inicio"] != null ? Convert.ToDateTime(reg["fecha_inicio"]).ToString("dd/MM/yyyy") : "")</td>
+                            <td class="align-middle">@(reg["fecha_fin"] != null ? Convert.ToDateTime(reg["fecha_fin"]).ToString("dd/MM/yyyy") : "Actualidad")</td>
+                            <td class="text-center">
+                                <button class="btn btn-warning btn-sm me-1" @onclick='() => PrepararEdicion(reg)'>
+                                    Editar
+                                </button>
+                                <button class="btn btn-danger btn-sm" @onclick='() => ConfirmarEliminacion(cedulaDocente, idSemillero)'>
+                                    Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (mostrarModalEliminar)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CancelarEliminacion"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Está seguro que desea eliminar la participación del docente en este semillero?</p>
+                    <p class="text-muted small">Esta acción no se puede deshacer.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelarEliminacion">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="EjecutarEliminacion">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // Listados de datos
+    private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> docentes = new();
+    private List<Dictionary<string, object?>> semilleros = new();
+
+    // Estado UI
+    private bool cargando = true;
+    private bool mostrarFormulario = false;
+    private bool editando = false;
+    private bool mostrarModalEliminar = false;
+
+    // Mensajes
+    private string mensaje = "";
+    private bool exito = false;
+
+    // Campos del formulario
+    private string campoDocente = "";
+    private string campoSemillero = "";
+    private string campoRol = "";
+    private DateTime campoFechaInicio = DateTime.Today;
+    private DateTime? campoFechaFin = null;
+
+    // Variables para Eliminación (Llave Compuesta)
+    private string idDocenteEliminar = "";
+    private string idSemilleroEliminar = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCatalogos();
+        await CargarRegistros();
+    }
+
+    private async Task CargarCatalogos()
+    {
+        docentes = await Api.ListarAsync("docente");
+        semilleros = await Api.ListarAsync("semillero");
+    }
+
+    private async Task CargarRegistros()
+    {
+        cargando = true;
+        registros = await Api.ListarAsync("participa_semillero");
+        cargando = false;
+    }
+
+    private string ObtenerNombreDocente(string? cedula)
+    {
+        if (string.IsNullOrEmpty(cedula)) return "Desconocido";
+        var docente = docentes.FirstOrDefault(d => d["cedula"]?.ToString() == cedula);
+        return docente != null ? $"{docente["nombres"]} {docente["apellidos"]}" : cedula;
+    }
+
+    private string ObtenerNombreSemillero(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return "Desconocido";
+        var semil = semilleros.FirstOrDefault(s => s["id"]?.ToString() == id);
+        return semil != null ? semil["nombre"]?.ToString() ?? id : id;
+    }
+
+    private void MostrarFormularioCrear()
+    {
+        LimpiarFormulario();
+        editando = false;
+        mostrarFormulario = true;
+        CerrarMensaje();
+    }
+
+    private void OcultarFormulario()
+    {
+        mostrarFormulario = false;
+        LimpiarFormulario();
+    }
+
+    private void PrepararEdicion(Dictionary<string, object?> registro)
+    {
+        CerrarMensaje();
+        editando = true;
+        
+        campoDocente = registro["docente"]?.ToString() ?? "";
+        campoSemillero = registro["semillero"]?.ToString() ?? "";
+        campoRol = registro["rol"]?.ToString() ?? "";
+
+        if (registro["fecha_inicio"] != null && DateTime.TryParse(registro["fecha_inicio"]?.ToString(), out DateTime fi))
+            campoFechaInicio = fi;
+        
+        if (registro["fecha_fin"] != null && DateTime.TryParse(registro["fecha_fin"]?.ToString(), out DateTime ff))
+            campoFechaFin = ff;
+        else
+            campoFechaFin = null;
+
+        mostrarFormulario = true;
+    }
+
+    private async Task GuardarRegistro()
+    {
+        // Validaciones básicas requeridas
+        if (string.IsNullOrWhiteSpace(campoDocente) || string.IsNullOrWhiteSpace(campoSemillero) || string.IsNullOrWhiteSpace(campoRol))
+        {
+            exito = false;
+            mensaje = "Por favor, complete todos los campos obligatorios.";
+            return;
+        }
+
+        CerrarMensaje();
+
+        var datos = new Dictionary<string, object?>
+        {
+            ["docente"] = int.Parse(campoDocente),
+            ["semillero"] = int.Parse(campoSemillero),
+            ["rol"] = campoRol,
+            ["fecha_inicio"] = campoFechaInicio.ToString("yyyy-MM-dd")
+        };
+
+        if (campoFechaFin.HasValue)
+        {
+            datos["fecha_fin"] = campoFechaFin.Value.ToString("yyyy-MM-dd");
+        }
+        else
+        {
+            datos["fecha_fin"] = null;
+        }
+
+        if (editando)
+        {
+            // Para editar (llaves compuestas), llamamos a nuestro procedimiento almacenado!
+            var spDatos = new Dictionary<string, object?>(datos); // Clonamos info base para SP
+            var resultado = await Sp.EjecutarSpAsync("sp_actualizar_participa_semillero", spDatos);
+            
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+        else
+        {
+            // Para la creación, la ruta genérica default POST /api/participa_semillero funciona perfecto
+            var resultado = await Api.CrearAsync("participa_semillero", datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+
+        if (exito)
+        {
+            mostrarFormulario = false;
+            await CargarRegistros();
+        }
+    }
+
+    private void ConfirmarEliminacion(string? pDocente, string? pSemillero)
+    {
+        if (string.IsNullOrEmpty(pDocente) || string.IsNullOrEmpty(pSemillero)) return;
+        
+        idDocenteEliminar = pDocente;
+        idSemilleroEliminar = pSemillero;
+        mostrarModalEliminar = true;
+        CerrarMensaje();
+    }
+
+    private void CancelarEliminacion()
+    {
+        mostrarModalEliminar = false;
+        idDocenteEliminar = "";
+        idSemilleroEliminar = "";
+    }
+
+    private async Task EjecutarEliminacion()
+    {
+        // Usamos nuestro Procedimiento Almacenado debido a la llave compuesta
+        var parametrosSp = new Dictionary<string, object?> {
+            ["docente"] = int.Parse(idDocenteEliminar),
+            ["semillero"] = int.Parse(idSemilleroEliminar)
+        };
+
+        var resultado = await Sp.EjecutarSpAsync("sp_eliminar_participa_semillero", parametrosSp);
+
+        exito = resultado.exito;
+        mensaje = resultado.mensaje;
+
+        CancelarEliminacion();
+
+        if (exito)
+        {
+            await CargarRegistros();
+        }
+    }
+
+    private void LimpiarFormulario()
+    {
+        campoDocente = "";
+        campoSemillero = "";
+        campoRol = "";
+        campoFechaInicio = DateTime.Today;
+        campoFechaFin = null;
+    }
+
+    private void CerrarMensaje()
+    {
+        mensaje = "";
+    }
+}

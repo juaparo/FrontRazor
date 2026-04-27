@@ -1,57 +1,61 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace FrontBlazor_AppiGenericaCsharp.Services
 {
-    // Servicio generico que consume la API REST para cualquier tabla.
-    // Se inyecta en las paginas Blazor con @inject ApiService Api
+    /// <summary>
+    /// Servicio que consume la API generica C#.
+    /// Si AuthService tiene un token JWT, lo envia en cada request
+    /// como header "Authorization: Bearer {token}".
+    /// Si la API tiene [Authorize] en un controller, sin este token
+    /// las peticiones fallan con 401 Unauthorized.
+    /// </summary>
     public class ApiService
     {
-        // HttpClient configurado en Program.cs con la URL base de la API
         private readonly HttpClient _http;
+        private readonly AuthService? _auth;
 
-        // Opciones para deserializar JSON sin distinguir mayusculas/minusculas
-        // La API devuelve "datos", "estado", etc. en minuscula
         private readonly JsonSerializerOptions _jsonOptions = new()
         {
             PropertyNameCaseInsensitive = true
         };
 
-        // El constructor recibe el HttpClient inyectado por DI
-        public ApiService(HttpClient http)
+        public ApiService(HttpClient http, AuthService? auth = null)
         {
             _http = http;
+            _auth = auth;
         }
 
-        // ──────────────────────────────────────────────
+        /// <summary>
+        /// Agrega el token JWT al header Authorization antes de cada request.
+        /// Si no hay token (no ha hecho login), no agrega nada y la API
+        /// funciona sin autenticacion (endpoints sin [Authorize]).
+        /// </summary>
+        private void AgregarTokenJwt()
+        {
+            _http.DefaultRequestHeaders.Remove("Authorization");
+            if (_auth?.Token != null)
+                _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_auth.Token}");
+        }
+
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // LISTAR: GET /api/{tabla}
-        // Devuelve la lista de registros como diccionarios
-        // ──────────────────────────────────────────────
-        public async Task<List<Dictionary<string, object?>>> ListarAsync(string tabla, int? limite = null)
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        public async Task<List<Dictionary<string, object?>>> ListarAsync(
+            string tabla, int? limite = null)
         {
             try
             {
-                // Hace GET a la API y obtiene la respuesta como JSON
+                AgregarTokenJwt();
                 string url = $"/api/{tabla}";
                 if (limite.HasValue)
                     url += $"?limite={limite.Value}";
 
-                var response = await _http.GetAsync(url);
+                var respuesta = await _http.GetFromJsonAsync<JsonElement>(url, _jsonOptions);
 
-                if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                if (respuesta.TryGetProperty("datos", out JsonElement datos))
                 {
-                    return new List<Dictionary<string, object?>>();
-                }
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var respuesta = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
-
-                    // Extrae la propiedad "datos" de la respuesta
-                    if (respuesta.TryGetProperty("datos", out JsonElement datos))
-                    {
-                        return ConvertirDatos(datos);
-                    }
+                    return ConvertirDatos(datos);
                 }
 
                 return new List<Dictionary<string, object?>>();
@@ -63,23 +67,23 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
             }
         }
 
-        // ──────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // CREAR: POST /api/{tabla}
-        // Envia los datos del formulario como JSON
-        // Devuelve (exito, mensaje) para mostrar al usuario
-        // ──────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         public async Task<(bool exito, string mensaje)> CrearAsync(
             string tabla, Dictionary<string, object?> datos,
             string? camposEncriptar = null)
         {
             try
             {
+                AgregarTokenJwt();
                 string url = $"/api/{tabla}";
                 if (!string.IsNullOrEmpty(camposEncriptar))
                     url += $"?camposEncriptar={camposEncriptar}";
 
                 var respuesta = await _http.PostAsJsonAsync(url, datos);
-                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(
+                    _jsonOptions);
 
                 string mensaje = contenido.TryGetProperty("mensaje", out JsonElement msg)
                     ? msg.GetString() ?? "Operacion completada."
@@ -93,10 +97,9 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
             }
         }
 
-        // ──────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // ACTUALIZAR: PUT /api/{tabla}/{clave}/{valor}
-        // Envia los campos a modificar como JSON
-        // ──────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         public async Task<(bool exito, string mensaje)> ActualizarAsync(
             string tabla, string nombreClave, string valorClave,
             Dictionary<string, object?> datos,
@@ -104,12 +107,14 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
         {
             try
             {
+                AgregarTokenJwt();
                 string url = $"/api/{tabla}/{nombreClave}/{valorClave}";
                 if (!string.IsNullOrEmpty(camposEncriptar))
                     url += $"?camposEncriptar={camposEncriptar}";
 
                 var respuesta = await _http.PutAsJsonAsync(url, datos);
-                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(
+                    _jsonOptions);
 
                 string mensaje = contenido.TryGetProperty("mensaje", out JsonElement msg)
                     ? msg.GetString() ?? "Operacion completada."
@@ -123,18 +128,19 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
             }
         }
 
-        // ──────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // ELIMINAR: DELETE /api/{tabla}/{clave}/{valor}
-        // Solo necesita la clave primaria para identificar el registro
-        // ──────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         public async Task<(bool exito, string mensaje)> EliminarAsync(
             string tabla, string nombreClave, string valorClave)
         {
             try
             {
+                AgregarTokenJwt();
                 var respuesta = await _http.DeleteAsync(
                     $"/api/{tabla}/{nombreClave}/{valorClave}");
-                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(
+                    _jsonOptions);
 
                 string mensaje = contenido.TryGetProperty("mensaje", out JsonElement msg)
                     ? msg.GetString() ?? "Operacion completada."
@@ -148,10 +154,9 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
             }
         }
 
-        // ──────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // DIAGNOSTICO: GET /api/diagnostico/conexion
-        // Devuelve info del servidor de BD conectado
-        // ──────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         public async Task<Dictionary<string, string>?> ObtenerDiagnosticoAsync()
         {
             try
@@ -177,12 +182,9 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
             }
         }
 
-        // ──────────────────────────────────────────────
-        // METODO AUXILIAR: Convierte JsonElement a lista de diccionarios
-        // La API devuelve los datos como JSON generico, este metodo
-        // lo transforma a Dictionary<string, object?> para trabajar
-        // facilmente con @foreach y @bind en Blazor
-        // ──────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Convierte JsonElement a lista de diccionarios
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         private List<Dictionary<string, object?>> ConvertirDatos(JsonElement datos)
         {
             var lista = new List<Dictionary<string, object?>>();
@@ -193,11 +195,11 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
 
                 foreach (var propiedad in fila.EnumerateObject())
                 {
-                    // Convierte cada valor JSON a su tipo .NET correspondiente
                     diccionario[propiedad.Name] = propiedad.Value.ValueKind switch
                     {
                         JsonValueKind.String => propiedad.Value.GetString(),
-                        JsonValueKind.Number => propiedad.Value.TryGetInt32(out int i) ? i : propiedad.Value.GetDouble(),
+                        JsonValueKind.Number => propiedad.Value.TryGetInt32(out int i)
+                            ? i : propiedad.Value.GetDouble(),
                         JsonValueKind.True => true,
                         JsonValueKind.False => false,
                         JsonValueKind.Null => null,
@@ -212,3 +214,4 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
         }
     }
 }
+

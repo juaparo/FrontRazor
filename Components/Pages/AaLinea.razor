@@ -1,0 +1,262 @@
+@page "/aa-linea"
+@rendermode InteractiveServer
+@inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+@inject FrontBlazor_AppiGenericaCsharp.Services.SpService Sp
+
+<PageTitle>Líneas y Áreas de Aplicación</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Áreas de Aplicación por Línea</h2>
+        <button class="btn btn-primary" @onclick="MostrarFormularioCrear">
+            <i class="bi bi-plus-circle me-1"></i> Vincular Área
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert alert-@(exito ? "success" : "danger") alert-dismissible fade show" role="alert">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="CerrarMensaje"></button>
+        </div>
+    }
+
+    @if (mostrarFormulario)
+    {
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Vincular Área de Aplicación</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Linea Investigacion -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Línea de Investigación <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="campoLinea">
+                            <option value="">-- Seleccione una Línea --</option>
+                            @foreach (var l in lineas)
+                            {
+                                <option value="@l["id"]?.ToString()">@l["nombre"]</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Area Aplicacion -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Área de Aplicación <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="campoArea">
+                            <option value="">-- Seleccione un Área --</option>
+                            @foreach (var a in areas)
+                            {
+                                <option value="@a["id"]?.ToString()">@a["nombre"]</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button class="btn btn-secondary" @onclick="OcultarFormulario">Cancelar</button>
+                    <button class="btn btn-success" @onclick="GuardarRegistro">
+                        <i class="bi bi-link me-1"></i> Vincular
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (cargando)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    }
+    else if (registros.Count == 0)
+    {
+        <div class="alert alert-info">No hay vínculos registrados.</div>
+    }
+    else
+    {
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Línea de Investigación</th>
+                        <th>Área de Aplicación</th>
+                        <th class="text-center" style="width: 150px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var reg in registros)
+                    {
+                        var idLinea = reg["linea_investigacion"]?.ToString();
+                        var idArea = reg["area_aplicacion"]?.ToString();
+                        
+                        <tr>
+                            <td class="align-middle">@ObtenerNombreLinea(idLinea)</td>
+                            <td class="align-middle">@ObtenerNombreArea(idArea)</td>
+                            <td class="text-center">
+                                <button class="btn btn-danger btn-sm" @onclick='() => ConfirmarEliminacion(idLinea, idArea)'>
+                                    Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (mostrarModalEliminar)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Confirmar Desvinculación</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CancelarEliminacion"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Está seguro que desea eliminar este vínculo?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelarEliminacion">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="EjecutarEliminacion">Eliminar Vínculo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> lineas = new();
+    private List<Dictionary<string, object?>> areas = new();
+
+    private bool cargando = true;
+    private bool mostrarFormulario = false;
+    private bool mostrarModalEliminar = false;
+
+    private string mensaje = "";
+    private bool exito = false;
+
+    private string campoLinea = "";
+    private string campoArea = "";
+
+    private string idLineaEliminar = "";
+    private string idAreaEliminar = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCatalogos();
+        await CargarRegistros();
+    }
+
+    private async Task CargarCatalogos()
+    {
+        lineas = await Api.ListarAsync("linea_investigacion");
+        areas = await Api.ListarAsync("area_aplicacion");
+    }
+
+    private async Task CargarRegistros()
+    {
+        cargando = true;
+        registros = await Api.ListarAsync("aa_linea");
+        cargando = false;
+    }
+
+    private string ObtenerNombreLinea(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return "";
+        var item = lineas.FirstOrDefault(x => x["id"]?.ToString() == id);
+        return item != null ? item["nombre"]?.ToString() ?? id : id;
+    }
+
+    private string ObtenerNombreArea(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return "";
+        var item = areas.FirstOrDefault(x => x["id"]?.ToString() == id);
+        return item != null ? item["nombre"]?.ToString() ?? id : id;
+    }
+
+    private void MostrarFormularioCrear()
+    {
+        campoLinea = "";
+        campoArea = "";
+        mostrarFormulario = true;
+        CerrarMensaje();
+    }
+
+    private void OcultarFormulario()
+    {
+        mostrarFormulario = false;
+    }
+
+    private async Task GuardarRegistro()
+    {
+        if (string.IsNullOrWhiteSpace(campoLinea) || string.IsNullOrWhiteSpace(campoArea))
+        {
+            exito = false;
+            mensaje = "Por favor, seleccione ambos campos obligatorios.";
+            return;
+        }
+
+        CerrarMensaje();
+
+        var datos = new Dictionary<string, object?>
+        {
+            ["linea_investigacion"] = int.Parse(campoLinea),
+            ["area_aplicacion"] = int.Parse(campoArea)
+        };
+
+        var resultado = await Api.CrearAsync("aa_linea", datos);
+        exito = resultado.exito;
+        mensaje = resultado.mensaje;
+
+        if (exito)
+        {
+            mostrarFormulario = false;
+            await CargarRegistros();
+        }
+    }
+
+    private void ConfirmarEliminacion(string? pLinea, string? pArea)
+    {
+        if (string.IsNullOrEmpty(pLinea) || string.IsNullOrEmpty(pArea)) return;
+        idLineaEliminar = pLinea;
+        idAreaEliminar = pArea;
+        mostrarModalEliminar = true;
+        CerrarMensaje();
+    }
+
+    private void CancelarEliminacion()
+    {
+        mostrarModalEliminar = false;
+    }
+
+    private async Task EjecutarEliminacion()
+    {
+        var parametrosSp = new Dictionary<string, object?> {
+            ["linea_investigacion"] = int.Parse(idLineaEliminar),
+            ["area_aplicacion"] = int.Parse(idAreaEliminar)
+        };
+
+        var resultado = await Sp.EjecutarSpAsync("sp_eliminar_aa_linea", parametrosSp);
+        exito = resultado.exito;
+        mensaje = resultado.mensaje;
+
+        CancelarEliminacion();
+
+        if (exito)
+        {
+            await CargarRegistros();
+        }
+    }
+
+    private void CerrarMensaje()
+    {
+        mensaje = "";
+    }
+}
