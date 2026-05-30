@@ -1,4 +1,4 @@
-﻿@*
+@*
     Login.razor - Pagina de inicio de sesion.
 
     CONCEPTOS BLAZOR:
@@ -25,38 +25,45 @@
 @inject NavigationManager nav
 @rendermode InteractiveServer
 
-<div class="d-flex justify-content-center align-items-center" style="min-height:100vh;background:#f0f2f5">
-    <div class="card shadow" style="width:400px">
-        <div class="card-header text-center" style="background:var(--bs-primary, #0d6efd);color:white">
-            <h4 class="mb-0">App Conocimiento</h4>
+<div class="d-flex justify-content-center align-items-center" style="min-height:100vh; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+    <div class="card shadow-lg border-0" style="width:420px; border-radius: 16px; overflow: hidden;">
+        <div class="card-header text-center py-4 border-0" style="background: linear-gradient(135deg, #198754 0%, #146c43 100%); color:white;">
+            <h3 class="mb-0 fw-bold">
+                <i class="bi bi-mortarboard-fill me-2"></i>App Conocimiento
+            </h3>
         </div>
-        <div class="card-body p-4">
+        <div class="card-body p-4 p-md-5 bg-white">
             @if (!string.IsNullOrEmpty(error))
             {
-                <div class="alert alert-danger small py-2 alert-dismissible fade show">
-                    @error
-                    <button type="button" class="btn-close" @onclick='() => error = ""'></button>
+                <div class="alert alert-danger small py-2 alert-dismissible fade show d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <div>@error</div>
+                    <button type="button" class="btn-close ms-auto" style="position: relative; padding: 0.5rem;" @onclick='() => error = ""'></button>
                 </div>
             }
 
-            <div class="mb-3">
-                <label class="form-label small">Correo electronico</label>
-                <input type="email" class="form-control" @bind="email" />
+            <div class="form-floating mb-4">
+                <input type="email" class="form-control" id="floatingEmail" placeholder="name@example.com" @bind="email" />
+                <label for="floatingEmail" class="text-muted"><i class="bi bi-envelope me-2"></i>Correo electrónico</label>
             </div>
-            <div class="mb-3">
-                <label class="form-label small">Contrasena</label>
-                <input type="password" class="form-control" @bind="contrasena"
-                       @onkeypress="OnKeyPress" />
+            
+            <div class="form-floating mb-4">
+                <input type="password" class="form-control" id="floatingPassword" placeholder="Contraseña" @bind="contrasena" @onkeypress="OnKeyPress" />
+                <label for="floatingPassword" class="text-muted"><i class="bi bi-lock me-2"></i>Contraseña</label>
             </div>
-            <button class="btn btn-primary w-100" @onclick="DoLogin" disabled="@cargando">
+
+            <button class="btn btn-success w-100 py-2 mt-2 fw-bold shadow-sm" style="border-radius: 8px; font-size: 1.05rem;" @onclick="DoLogin" disabled="@cargando">
                 @if (cargando)
                 {
-                    <span class="spinner-border spinner-border-sm me-1"></span>
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                 }
-                Iniciar sesion
+                <i class="bi bi-box-arrow-in-right me-2"></i> Iniciar sesión
             </button>
-            <div class="text-center mt-3">
-                <a href="/recuperar-contrasena" class="small text-muted">Olvido su contraseña?</a>
+            
+            <div class="text-center mt-4">
+                <a href="/recuperar-contrasena" class="text-success text-decoration-none fw-medium hover-underline" style="transition: color 0.2s ease;">
+                    ¿Olvidó su contraseña?
+                </a>
             </div>
         </div>
     </div>
