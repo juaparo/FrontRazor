@@ -1,19 +1,26 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: #15803d; /* Verde esmeralda oscuro */
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    background-color: #22c55e; /* Verde brillante */
+    border-color: #16a34a; /* Verde ligeramente mas oscuro para borde */
+    border-radius: 8px; /* Redondeado sutil moderno */
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-primary:hover {
+    background-color: #16a34a;
+    transform: translateY(-1px);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #86efac; /* Sombra verde claro */
 }
 
 .content {
@@ -57,4 +64,171 @@ h1:focus {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
+}
+
+/* ==========================================================================
+   ESTILOS MODERNOS PARA FORMULARIOS Y TABLAS (TEMA VERDE/EDUCATIVO)
+   ========================================================================== */
+
+/* Tarjetas (Cards) para Formularios */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    background-color: #ffffff;
+    overflow: hidden;
+}
+
+.card-header {
+    background-color: #f0fdf4; /* Fondo verde muy claro */
+    border-bottom: 1px solid #dcfce7;
+    color: #166534; /* Texto verde oscuro */
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Campos de Formulario */
+.form-control {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+.form-label {
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+/* Tablas Modernas */
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    margin-top: 1rem;
+    background-color: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.table thead th {
+    background-color: #14532d !important; /* Verde oscuro acorde al sidebar */
+    color: #ffffff !important;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    padding: 1rem;
+    border-bottom: none;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f3f4f6;
+    color: #4b5563;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: #f9fafb;
+    color: #4b5563;
+}
+
+.table-hover > tbody > tr:hover > * {
+    background-color: #f0fdf4; /* Hover verde muy claro */
+}
+
+/* Botones de Acción Secundarios */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-success {
+    background-color: #16a34a;
+    border-color: #15803d;
+    color: white;
+}
+.btn-success:hover {
+    background-color: #15803d;
+    border-color: #166534;
+    transform: translateY(-1px);
+}
+
+.btn-warning {
+    background-color: #f59e0b; /* Ambar moderno */
+    border-color: #d97706;
+    color: white;
+}
+.btn-warning:hover {
+    background-color: #d97706;
+    border-color: #b45309;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background-color: #ef4444; /* Rojo moderno */
+    border-color: #dc2626;
+    color: white;
+}
+.btn-danger:hover {
+    background-color: #dc2626;
+    border-color: #b91c1c;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: #6b7280;
+    border-color: #4b5563;
+}
+.btn-secondary:hover {
+    background-color: #4b5563;
+    border-color: #374151;
+    transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   ESTILOS MODERNOS PARA MODALES Y VENTANAS EMERGENTES (GLASSMORPHISM)
+   ========================================================================== */
+
+.modal-content {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+    overflow: hidden;
+}
+
+.modal-header.bg-success {
+    background: linear-gradient(135deg, #198754 0%, #146c43 100%) !important;
+    border-bottom: none;
+    color: white;
+}
+
+.modal-header .btn-close-white {
+    filter: brightness(0) invert(1);
+    opacity: 0.8;
+}
+
+.modal-header .btn-close-white:hover {
+    opacity: 1;
+}
+
+/* Redefiniendo el fondo del modal en Blazor */
+.modal.fade.show[style*="display: block"] {
+    backdrop-filter: blur(5px);
+    background-color: rgba(15, 23, 42, 0.6) !important;
 }
