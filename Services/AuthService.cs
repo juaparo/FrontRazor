@@ -929,12 +929,6 @@ WHERE u.{pkUsuario} = @email";
         try
         {
             // Verificar que el usuario existe usando verificar-contrasena (AllowAnonymous).
-            // Este endpoint no requiere JWT, lo cual es necesario porque el usuario
-            // NO esta logueado cuando recupera su contrasena.
-            // Logica: enviamos contrasena dummy. Si la API responde:
-            //   404 = el email NO existe
-            //   401 = el email SI existe (contrasena incorrecta, lo esperado)
-            //   200 = el email SI existe (imposible con contrasena dummy)
             var pkUsuario = await ObtenerPK("usuario");
             var verificarUrl = $"/api/usuario/verificar-contrasena";
             var verificarBody = new Dictionary<string, string>
@@ -1018,11 +1012,17 @@ WHERE u.{pkUsuario} = @email";
     private async Task<(bool ok, string msg)> CambiarContrasenaInterno(string email, string nueva)
     {
         var pkUsuario = await ObtenerPK("usuario");
-        var content = new StringContent(
-            JsonSerializer.Serialize(new Dictionary<string, string> { ["contrasena"] = nueva }),
-            System.Text.Encoding.UTF8, "application/json");
-        var resp = await _http.PutAsync(
-            $"/api/usuario/{pkUsuario}/{email}?camposEncriptar=contrasena", content);
+        
+        var reqBody = new Dictionary<string, string>
+        {
+            ["campoUsuario"] = pkUsuario,
+            ["valorUsuario"] = email,
+            ["campoContrasena"] = "contrasena",
+            ["nuevaContrasena"] = nueva
+        };
+
+        var resp = await _http.PostAsJsonAsync($"/api/usuario/restablecer-contrasena", reqBody);
+        
         if (resp.IsSuccessStatusCode) return (true, "OK");
         return (false, "Error al actualizar contrasena.");
     }
