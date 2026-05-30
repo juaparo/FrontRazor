@@ -82,6 +82,8 @@
                         <td>@reg["id"]</td>
                         <td>@reg["nombre"]</td>
                         <td>
+                            <button class="btn btn-info btn-sm me-1 text-white"
+                                    @onclick="() => AbrirModalRutas(reg)">Rutas</button>
                             <button class="btn btn-warning btn-sm me-1"
                                     @onclick="() => EditarRegistro(reg)">Editar</button>
                             <button class="btn btn-danger btn-sm"
@@ -99,6 +101,64 @@
     }
 </div>
 
+@if (mostrarModalRutas)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Rutas de Rol @nombreRolSeleccionado</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CerrarModalRutas"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex mb-3 gap-2">
+                        <select class="form-select" @bind="campoRutaAsignar">
+                            <option value="">-- Seleccione una Ruta --</option>
+                            @foreach(var r in rutasCatalogo)
+                            {
+                                <option value="@r["id"]">@r["ruta"] (@r["descripcion"])</option>
+                            }
+                        </select>
+                        <button class="btn btn-success" @onclick="AsignarRuta">Asignar</button>
+                    </div>
+
+                    @if(rutasRol.Any())
+                    {
+                        <table class="table table-sm table-striped border rounded">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Ruta</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach(var rr in rutasRol)
+                                {
+                                    var idRr = rr["id"]?.ToString() ?? "";
+                                    var idRuta = rr["fkidruta"]?.ToString() ?? "";
+                                    <tr>
+                                        <td>@ObtenerRuta(idRuta)</td>
+                                        <td>
+                                            <button class="btn btn-danger btn-sm" @onclick="() => EliminarRutaRol(idRr)">Quitar</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">No tiene rutas asignadas.</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalRutas">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Dictionary<string, object?>> registros = new();
     private bool cargando = true;
@@ -111,9 +171,83 @@
     private string campoNombre = string.Empty;
     private int? limite = null;
 
+    private List<Dictionary<string, object?>> rutasCatalogo = new();
+    private List<Dictionary<string, object?>> rutasRol = new();
+    private bool mostrarModalRutas = false;
+    private int idRolSeleccionado = 0;
+    private string nombreRolSeleccionado = string.Empty;
+    private string campoRutaAsignar = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
         await CargarRegistros();
+        rutasCatalogo = await Api.ListarAsync("ruta");
+    }
+
+    private async Task AbrirModalRutas(Dictionary<string, object?> reg)
+    {
+        idRolSeleccionado = int.TryParse(reg["id"]?.ToString(), out int i) ? i : 0;
+        nombreRolSeleccionado = reg["nombre"]?.ToString() ?? "";
+        await CargarRutasRol();
+        mostrarModalRutas = true;
+    }
+
+    private async Task CargarRutasRol()
+    {
+        var todos = await Api.ListarAsync("rutarol");
+        rutasRol = todos.Where(x => x["fkidrol"]?.ToString() == idRolSeleccionado.ToString()).ToList();
+    }
+
+    private void CerrarModalRutas()
+    {
+        mostrarModalRutas = false;
+        idRolSeleccionado = 0;
+        nombreRolSeleccionado = string.Empty;
+        campoRutaAsignar = string.Empty;
+    }
+
+    private async Task AsignarRuta()
+    {
+        if (string.IsNullOrWhiteSpace(campoRutaAsignar)) return;
+        
+        var datos = new Dictionary<string, object?>
+        {
+            ["fkidrol"] = idRolSeleccionado,
+            ["fkidruta"] = int.Parse(campoRutaAsignar)
+        };
+
+        var resultado = await Api.CrearAsync("rutarol", datos);
+        if (resultado.exito)
+        {
+            campoRutaAsignar = string.Empty;
+            await CargarRutasRol();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error: " + resultado.mensaje);
+        }
+    }
+
+    private async Task EliminarRutaRol(string id)
+    {
+        var confirmar = await JS.InvokeAsync<bool>("confirmarAccion", "¿Desvincular esta ruta?");
+        if (!confirmar) return;
+
+        var resultado = await Api.EliminarAsync("rutarol", "id", id);
+        if (resultado.exito)
+        {
+            await CargarRutasRol();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error: " + resultado.mensaje);
+        }
+    }
+
+    private string ObtenerRuta(string idRuta)
+    {
+        var r = rutasCatalogo.FirstOrDefault(x => x["id"]?.ToString() == idRuta);
+        return r != null ? r["ruta"]?.ToString() ?? idRuta : idRuta;
     }
 
     private async Task CargarRegistros()
@@ -152,7 +286,7 @@
         if (editando)
         {
             datos.Remove("id");
-            var confirmar = await JS.InvokeAsync<bool>("confirm",
+            var confirmar = await JS.InvokeAsync<bool>("confirmarAccion",
                 $"¿Está seguro de actualizar el Rol #{campoId}?");
             if (!confirmar) return;
             var resultado = await Api.ActualizarAsync("rol", "id", campoId.ToString(), datos);
@@ -176,7 +310,7 @@
     private async Task EliminarRegistro(Dictionary<string, object?> reg)
     {
         string id = reg["id"]?.ToString() ?? "";
-        var confirmar = await JS.InvokeAsync<bool>("confirm",
+        var confirmar = await JS.InvokeAsync<bool>("confirmarAccion",
             $"¿Está seguro de eliminar el Rol #{id}?");
         if (!confirmar) return;
         var resultado = await Api.EliminarAsync("rol", "id", id);

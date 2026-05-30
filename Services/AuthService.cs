@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AuthService.cs - Servicio de autenticacion y autorizacion para Blazor Server.
  *
  * QUE SE NECESITA PARA LOGIN Y CONTROL DE ACCESO:
@@ -253,7 +253,15 @@ public class AuthService
                 using var doc = JsonDocument.Parse(body);
                 // La API devuelve: {"token": "eyJhbG...", "usuario": "email", ...}
                 if (doc.RootElement.TryGetProperty("token", out var tokenEl))
+                {
                     Token = tokenEl.GetString();
+                    // IMPORTANTE: Configurar el token en el cliente HTTP interno para las siguientes llamadas (roles, rutas, etc.)
+                    if (!string.IsNullOrEmpty(Token))
+                    {
+                        _http.DefaultRequestHeaders.Authorization = 
+                            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
+                    }
+                }
                 return (true, "OK");
             }
 
@@ -828,7 +836,13 @@ WHERE u.{pkUsuario} = @email";
                 if (nombreResult.Success) NombreUsuario = nombreResult.Value;
                 // Restaurar token JWT para que ApiService lo envie en cada request
                 var tokenResult = await _session.GetAsync<string>("token");
-                if (tokenResult.Success) Token = tokenResult.Value;
+                if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
+                {
+                    Token = tokenResult.Value;
+                    // Restaurar el token en el cliente HTTP interno para futuras peticiones a la API desde este servicio
+                    _http.DefaultRequestHeaders.Authorization = 
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
+                }
                 var rolesResult = await _session.GetAsync<string>("roles");
                 if (rolesResult.Success && !string.IsNullOrEmpty(rolesResult.Value))
                     Roles = rolesResult.Value.Split(',').ToList();
@@ -915,12 +929,6 @@ WHERE u.{pkUsuario} = @email";
         try
         {
             // Verificar que el usuario existe usando verificar-contrasena (AllowAnonymous).
-            // Este endpoint no requiere JWT, lo cual es necesario porque el usuario
-            // NO esta logueado cuando recupera su contrasena.
-            // Logica: enviamos contrasena dummy. Si la API responde:
-            //   404 = el email NO existe
-            //   401 = el email SI existe (contrasena incorrecta, lo esperado)
-            //   200 = el email SI existe (imposible con contrasena dummy)
             var pkUsuario = await ObtenerPK("usuario");
             var verificarUrl = $"/api/usuario/verificar-contrasena";
             var verificarBody = new Dictionary<string, string>
@@ -1004,11 +1012,17 @@ WHERE u.{pkUsuario} = @email";
     private async Task<(bool ok, string msg)> CambiarContrasenaInterno(string email, string nueva)
     {
         var pkUsuario = await ObtenerPK("usuario");
-        var content = new StringContent(
-            JsonSerializer.Serialize(new Dictionary<string, string> { ["contrasena"] = nueva }),
-            System.Text.Encoding.UTF8, "application/json");
-        var resp = await _http.PutAsync(
-            $"/api/usuario/{pkUsuario}/{email}?camposEncriptar=contrasena", content);
+        
+        var reqBody = new Dictionary<string, string>
+        {
+            ["campoUsuario"] = pkUsuario,
+            ["valorUsuario"] = email,
+            ["campoContrasena"] = "contrasena",
+            ["nuevaContrasena"] = nueva
+        };
+
+        var resp = await _http.PostAsJsonAsync($"/api/usuario/restablecer-contrasena", reqBody);
+        
         if (resp.IsSuccessStatusCode) return (true, "OK");
         return (false, "Error al actualizar contrasena.");
     }

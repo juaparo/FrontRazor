@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace FrontBlazor_AppiGenericaCsharp.Services
@@ -82,8 +82,22 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
                     url += $"?camposEncriptar={camposEncriptar}";
 
                 var respuesta = await _http.PostAsJsonAsync(url, datos);
-                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(
-                    _jsonOptions);
+                
+                if (!respuesta.IsSuccessStatusCode)
+                {
+                    try
+                    {
+                        var error = await respuesta.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+                        if (error.TryGetProperty("mensaje", out JsonElement msgError))
+                            return (false, msgError.GetString() ?? "Error en el servidor.");
+                    }
+                    catch (JsonException)
+                    {
+                        return (false, $"Error del servidor ({respuesta.StatusCode}). La operación falló.");
+                    }
+                }
+
+                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
 
                 string mensaje = contenido.TryGetProperty("mensaje", out JsonElement msg)
                     ? msg.GetString() ?? "Operacion completada."
@@ -113,8 +127,22 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
                     url += $"?camposEncriptar={camposEncriptar}";
 
                 var respuesta = await _http.PutAsJsonAsync(url, datos);
-                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(
-                    _jsonOptions);
+                
+                if (!respuesta.IsSuccessStatusCode)
+                {
+                    try
+                    {
+                        var error = await respuesta.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+                        if (error.TryGetProperty("mensaje", out JsonElement msgError))
+                            return (false, msgError.GetString() ?? "Error en el servidor.");
+                    }
+                    catch (JsonException)
+                    {
+                        return (false, $"Error del servidor ({respuesta.StatusCode}). La actualización falló.");
+                    }
+                }
+
+                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
 
                 string mensaje = contenido.TryGetProperty("mensaje", out JsonElement msg)
                     ? msg.GetString() ?? "Operacion completada."
@@ -139,8 +167,22 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
                 AgregarTokenJwt();
                 var respuesta = await _http.DeleteAsync(
                     $"/api/{tabla}/{nombreClave}/{valorClave}");
-                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(
-                    _jsonOptions);
+                
+                if (!respuesta.IsSuccessStatusCode)
+                {
+                    try
+                    {
+                        var error = await respuesta.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+                        if (error.TryGetProperty("mensaje", out JsonElement msgError))
+                            return (false, msgError.GetString() ?? "Error en el servidor.");
+                    }
+                    catch (JsonException)
+                    {
+                        return (false, $"Error del servidor ({respuesta.StatusCode}). Es posible que este registro esté en uso y no se pueda eliminar.");
+                    }
+                }
+
+                var contenido = await respuesta.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
 
                 string mensaje = contenido.TryGetProperty("mensaje", out JsonElement msg)
                     ? msg.GetString() ?? "Operacion completada."

@@ -1,6 +1,7 @@
 @page "/ruta"
 @rendermode InteractiveServer
 @inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+@inject FrontBlazor_AppiGenericaCsharp.Services.SpService Sp
 @inject IJSRuntime JS
 
 <PageTitle>Rutas</PageTitle>
@@ -152,7 +153,7 @@
         if (editando)
         {
             datos.Remove("ruta");
-            var confirmar = await JS.InvokeAsync<bool>("confirm",
+            var confirmar = await JS.InvokeAsync<bool>("confirmarAccion",
                 $"¿Está seguro de actualizar la Ruta '{campoRuta}'?");
             if (!confirmar) return;
             var resultado = await Api.ActualizarAsync("ruta", "ruta", campoRuta, datos);
@@ -176,15 +177,27 @@
     private async Task EliminarRegistro(Dictionary<string, object?> reg)
     {
         string ruta = reg["ruta"]?.ToString() ?? "";
-        var confirmar = await JS.InvokeAsync<bool>("confirm",
-            $"¿Está seguro de eliminar la Ruta '{ruta}'?");
-        if (!confirmar) return;
-        var resultado = await Api.EliminarAsync("ruta", "ruta", ruta);
-        exito = resultado.exito;
-        mensaje = resultado.mensaje;
+        string idStr = reg["id"]?.ToString() ?? "";
 
-        if (exito)
-            await CargarRegistros();
+        var confirmar = await JS.InvokeAsync<bool>("confirmarAccion",
+            $"¿Está seguro de eliminar la Ruta '{ruta}' y revocar automáticamente este acceso en todos los roles?");
+        if (!confirmar) return;
+
+        if (int.TryParse(idStr, out int id))
+        {
+            var parametros = new Dictionary<string, object?> { ["id"] = id };
+            var resultado = await Sp.EjecutarSpAsync("sp_eliminar_ruta", parametros);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+
+            if (exito)
+                await CargarRegistros();
+        }
+        else
+        {
+            mensaje = "Error: ID de ruta inválido.";
+            exito = false;
+        }
     }
 
     private void Cancelar()

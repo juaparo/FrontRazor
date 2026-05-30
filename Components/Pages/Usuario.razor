@@ -82,6 +82,8 @@
                         <td>@reg["email"]</td>
                         <td>***</td>
                         <td>
+                            <button class="btn btn-info btn-sm me-1 text-white"
+                                    @onclick="() => AbrirModalRoles(reg)">Roles</button>
                             <button class="btn btn-warning btn-sm me-1"
                                     @onclick="() => EditarRegistro(reg)">Editar</button>
                             <button class="btn btn-danger btn-sm"
@@ -99,6 +101,64 @@
     }
 </div>
 
+@if (mostrarModalRoles)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Roles de @emailSeleccionado</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CerrarModalRoles"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex mb-3 gap-2">
+                        <select class="form-select" @bind="campoRolAsignar">
+                            <option value="">-- Seleccione un Rol --</option>
+                            @foreach(var r in rolesCatalogo)
+                            {
+                                <option value="@r["id"]">@r["nombre"]</option>
+                            }
+                        </select>
+                        <button class="btn btn-success" @onclick="AsignarRol">Asignar</button>
+                    </div>
+
+                    @if(rolesUsuario.Any())
+                    {
+                        <table class="table table-sm table-striped border rounded">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Rol</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach(var ru in rolesUsuario)
+                                {
+                                    var idRu = ru["id"]?.ToString() ?? "";
+                                    var idRol = ru["fkidrol"]?.ToString() ?? "";
+                                    <tr>
+                                        <td>@ObtenerNombreRol(idRol)</td>
+                                        <td>
+                                            <button class="btn btn-danger btn-sm" @onclick="() => EliminarRolUsuario(idRu)">Quitar</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">No tiene roles asignados.</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalRoles">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Dictionary<string, object?>> registros = new();
     private bool cargando = true;
@@ -111,9 +171,80 @@
     private string campoContrasena = string.Empty;
     private int? limite = null;
 
+    private List<Dictionary<string, object?>> rolesCatalogo = new();
+    private List<Dictionary<string, object?>> rolesUsuario = new();
+    private bool mostrarModalRoles = false;
+    private string emailSeleccionado = string.Empty;
+    private string campoRolAsignar = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
         await CargarRegistros();
+        rolesCatalogo = await Api.ListarAsync("rol");
+    }
+
+    private async Task AbrirModalRoles(Dictionary<string, object?> reg)
+    {
+        emailSeleccionado = reg["email"]?.ToString() ?? "";
+        await CargarRolesUsuario();
+        mostrarModalRoles = true;
+    }
+
+    private async Task CargarRolesUsuario()
+    {
+        var todos = await Api.ListarAsync("rol_usuario");
+        rolesUsuario = todos.Where(x => x["fkemail"]?.ToString() == emailSeleccionado).ToList();
+    }
+
+    private void CerrarModalRoles()
+    {
+        mostrarModalRoles = false;
+        emailSeleccionado = string.Empty;
+        campoRolAsignar = string.Empty;
+    }
+
+    private async Task AsignarRol()
+    {
+        if (string.IsNullOrWhiteSpace(campoRolAsignar)) return;
+        
+        var datos = new Dictionary<string, object?>
+        {
+            ["fkemail"] = emailSeleccionado,
+            ["fkidrol"] = int.Parse(campoRolAsignar)
+        };
+
+        var resultado = await Api.CrearAsync("rol_usuario", datos);
+        if (resultado.exito)
+        {
+            campoRolAsignar = string.Empty;
+            await CargarRolesUsuario();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error: " + resultado.mensaje);
+        }
+    }
+
+    private async Task EliminarRolUsuario(string id)
+    {
+        var confirmar = await JS.InvokeAsync<bool>("confirmarAccion", "¿Desvincular este rol?");
+        if (!confirmar) return;
+
+        var resultado = await Api.EliminarAsync("rol_usuario", "id", id);
+        if (resultado.exito)
+        {
+            await CargarRolesUsuario();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error: " + resultado.mensaje);
+        }
+    }
+
+    private string ObtenerNombreRol(string idRol)
+    {
+        var r = rolesCatalogo.FirstOrDefault(x => x["id"]?.ToString() == idRol);
+        return r != null ? r["nombre"]?.ToString() ?? idRol : idRol;
     }
 
     private async Task CargarRegistros()
@@ -152,7 +283,7 @@
         if (editando)
         {
             datos.Remove("email");
-            var confirmar = await JS.InvokeAsync<bool>("confirm",
+            var confirmar = await JS.InvokeAsync<bool>("confirmarAccion",
                 $"¿Está seguro de actualizar el Usuario '{campoEmail}'?");
             if (!confirmar) return;
             var resultado = await Api.ActualizarAsync("usuario", "email", campoEmail, datos,
@@ -178,7 +309,7 @@
     private async Task EliminarRegistro(Dictionary<string, object?> reg)
     {
         string email = reg["email"]?.ToString() ?? "";
-        var confirmar = await JS.InvokeAsync<bool>("confirm",
+        var confirmar = await JS.InvokeAsync<bool>("confirmarAccion",
             $"¿Está seguro de eliminar el Usuario '{email}'?");
         if (!confirmar) return;
         var resultado = await Api.EliminarAsync("usuario", "email", email);

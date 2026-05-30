@@ -60,20 +60,22 @@
     }
 
     .nav-item ::deep .nav-link {
-        color: #d7d7d7;
+        color: #d1fae5; /* Verde muy claro para texto no activo */
         background: none;
         border: none;
-        border-radius: 4px;
+        border-radius: 8px; /* Redondeado acorde a botones */
         height: 3rem;
         display: flex;
         align-items: center;
         line-height: 3rem;
         width: 100%;
+        transition: background-color 0.3s ease, color 0.3s ease;
     }
 
 .nav-item ::deep a.active {
-    background-color: rgba(255,255,255,0.37);
+    background-color: rgba(255,255,255,0.2);
     color: white;
+    font-weight: 500;
 }
 
 .nav-item ::deep .nav-link:hover {
